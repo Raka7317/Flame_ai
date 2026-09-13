@@ -10,6 +10,17 @@ A monorepo containing:
 See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for design details, query flow, and
 type-system tradeoffs.
 
+**Live demo:** https://flame-ai-zs96.onrender.com
+
+---
+
+## Screenshot
+
+![Todo app frontend](./docs/frontend.png)
+
+The app running live, showing the All / Active / Completed filters and a mix
+of completed and pending todos.
+
 ---
 
 ## 1. Setup
