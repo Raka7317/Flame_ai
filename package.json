@@ -1,0 +1,19 @@
+{
+  "name": "orm-assignment",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace=@lightorm/core && npm run build --workspace=todo-app",
+    "test": "npm run test --workspace=@lightorm/core",
+    "start": "npm run start --workspace=todo-app",
+    "dev:orm": "npm run dev --workspace=@lightorm/core",
+    "dev:app": "npm run dev --workspace=todo-app"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}

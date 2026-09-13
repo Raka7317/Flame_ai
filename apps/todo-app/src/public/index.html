@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Todo — powered by light-orm</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #171a21;
+      --border: #262b36;
+      --text: #e6e8ec;
+      --muted: #8b93a3;
+      --accent: #6ea8fe;
+      --danger: #ef6461;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      padding: 48px 16px;
+    }
+    main {
+      width: 100%;
+      max-width: 480px;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 4px;
+    }
+    p.subtitle {
+      color: var(--muted);
+      margin: 0 0 24px;
+      font-size: 0.9rem;
+    }
+    form {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      padding: 10px 16px;
+      background: var(--accent);
+      color: #0f1115;
+      font-weight: 600;
+    }
+    .filters {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .filters button {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      font-weight: 500;
+    }
+    .filters button.active {
+      background: var(--card);
+      color: var(--text);
+      border-color: var(--accent);
+    }
+    ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    li span {
+      flex: 1;
+      word-break: break-word;
+    }
+    li.completed span {
+      text-decoration: line-through;
+      color: var(--muted);
+    }
+    li button {
+      background: transparent;
+      color: var(--danger);
+      padding: 4px 8px;
+      font-size: 0.85rem;
+    }
+    .empty {
+      color: var(--muted);
+      text-align: center;
+      padding: 24px 0;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Todo</h1>
+    <p class="subtitle">Backed by <code>@lightorm/core</code> + Postgres</p>
+
+    <form id="create-form">
+      <input type="text" id="title-input" placeholder="What needs doing?" autocomplete="off" />
+      <button type="submit">Add</button>
+    </form>
+
+    <div class="filters">
+      <button data-filter="all" class="active">All</button>
+      <button data-filter="active">Active</button>
+      <button data-filter="completed">Completed</button>
+    </div>
+
+    <ul id="todo-list"></ul>
+    <div class="empty" id="empty-state" hidden>No todos yet — add one above.</div>
+  </main>
+
+  <script>
+    const listEl = document.getElementById("todo-list");
+    const emptyEl = document.getElementById("empty-state");
+    const formEl = document.getElementById("create-form");
+    const inputEl = document.getElementById("title-input");
+    const filterButtons = document.querySelectorAll(".filters button");
+
+    let currentFilter = "all";
+
+    async function fetchTodos() {
+      const params = new URLSearchParams();
+      if (currentFilter === "active") params.set("completed", "false");
+      if (currentFilter === "completed") params.set("completed", "true");
+
+      const res = await fetch(`/api/todos?${params.toString()}`);
+      const todos = await res.json();
+      render(todos);
+    }
+
+    function render(todos) {
+      listEl.innerHTML = "";
+      emptyEl.hidden = todos.length > 0;
+
+      for (const todo of todos) {
+        const li = document.createElement("li");
+        li.className = todo.completed ? "completed" : "";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = todo.completed;
+        checkbox.addEventListener("change", () => toggleTodo(todo.id, checkbox.checked));
+
+        const span = document.createElement("span");
+        span.textContent = todo.title;
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.textContent = "Delete";
+        deleteBtn.addEventListener("click", () => deleteTodo(todo.id));
+
+        li.append(checkbox, span, deleteBtn);
+        listEl.appendChild(li);
+      }
+    }
+
+    async function createTodo(title) {
+      await fetch("/api/todos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+      await fetchTodos();
+    }
+
+    async function toggleTodo(id, completed) {
+      await fetch(`/api/todos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completed }),
+      });
+      await fetchTodos();
+    }
+
+    async function deleteTodo(id) {
+      await fetch(`/api/todos/${id}`, { method: "DELETE" });
+      await fetchTodos();
+    }
+
+    formEl.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const title = inputEl.value.trim();
+      if (!title) return;
+      inputEl.value = "";
+      createTodo(title);
+    });
+
+    filterButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        filterButtons.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentFilter = btn.dataset.filter;
+        fetchTodos();
+      });
+    });
+
+    fetchTodos();
+  </script>
+</body>
+</html>
